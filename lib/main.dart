@@ -10,7 +10,7 @@ import 'package:newsapp/view/home_view.dart';
 import 'package:newsapp/view/login_page.dart';
 import 'package:newsapp/view/profile_view.dart';
 import 'package:newsapp/view/signup_view.dart';
-import 'package:newsapp/view/splash_screen.dart';
+
 import 'package:newsapp/view/verify_email_view.dart';
 
 void main() {
@@ -22,7 +22,7 @@ void main() {
           scaffoldBackgroundColor: Colors.white),
       home: BlocProvider(
           create: (context) => AuthBloc(FirebaseAuthProvider()),
-          child: const SplashScreen()),
+          child: const MyApp()),
       routes: {
         'LoginRoutes': (context) => const LoginPage(),
         'SignupRoutes': (context) => const SignupPage(),

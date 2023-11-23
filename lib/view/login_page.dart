@@ -1,12 +1,16 @@
-import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:newsapp/constant.dart';
+
 import 'package:newsapp/dialog/errordialog.dart';
 import 'package:newsapp/firebase_options.dart';
 import 'package:newsapp/services/auth/auth_exception.dart';
-import 'package:newsapp/view/home_view.dart';
+import 'package:newsapp/services/auth/bloc/auth_bloc.dart';
+import 'package:newsapp/services/auth/bloc/auth_event.dart';
+import 'package:newsapp/services/auth/bloc/auth_state.dart';
+
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -30,7 +34,20 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) async {
+        if (state is AuthStateLoggedOut) {
+          if (state.exception is UserNotFoundAuthException) {
+            await showErrorDialog(
+                context, 'Cannot find User with enterd credential');
+          } else if (state.exception is WrongPasswordAuthException) {
+            await showErrorDialog(context, 'Wrong Credentials');
+          } else if (state.exception is GenericAuthException) {
+            await showErrorDialog(context, 'Authentication Error');
+          }
+        }
+      },
+      child: Scaffold(
         resizeToAvoidBottomInset: false,
         body: Center(
           child: Container(
@@ -78,7 +95,7 @@ class _LoginPageState extends State<LoginPage> {
                                 .requestFocus(_passwordFocusNode);
                           },
                           textInputAction: TextInputAction.next,
-                        style: const TextStyle(color: Colors.black),
+                          style: const TextStyle(color: Colors.black),
                           maxLines: 1,
                           decoration: InputDecoration(
                             hintText: "Email id",
@@ -95,7 +112,7 @@ class _LoginPageState extends State<LoginPage> {
                           height: 15,
                         ),
                         TextFormField(
-                          controller: _passwordcontroler, 
+                          controller: _passwordcontroler,
                           maxLines: 1,
                           obscureText: hidepassword,
                           focusNode: _passwordFocusNode,
@@ -111,14 +128,14 @@ class _LoginPageState extends State<LoginPage> {
                             }
                             return null;
                           },
-                        style: const TextStyle(
-                          color: Colors.black,
+                          style: const TextStyle(
+                            color: Colors.black,
                           ),
                           decoration: InputDecoration(
                             hintText: "Password",
                             focusedBorder: outlineInputBorder,
                             border: outlineInputBorder,
-                          hintStyle: const TextStyle(color: Colors.black),
+                            hintStyle: const TextStyle(color: Colors.black),
                             prefix: Icon(
                               Icons.lock_open_outlined,
                               color: Colors.blueGrey[900],
@@ -135,7 +152,7 @@ class _LoginPageState extends State<LoginPage> {
                                 hidepassword
                                     ? Icons.visibility
                                     : Icons.visibility_off,
-                              color: Colors.black,
+                                color: Colors.black,
                               ),
                             ),
                           ),
@@ -149,37 +166,10 @@ class _LoginPageState extends State<LoginPage> {
                                       DefaultFirebaseOptions.currentPlatform);
                               final email = _emailcontroller.text;
                               final password = _passwordcontroler.text;
-                              try {
-                                await FirebaseAuth.instance
-                                    .signInWithEmailAndPassword(
-                                  email: email,
-                                  password: password,
-                                );
-                                final currentuser =
-                                    FirebaseAuth.instance.currentUser;
-                                if (currentuser!.emailVerified) {
-                                  // ignore: use_build_context_synchronously
-                                  Navigator.pushAndRemoveUntil(context,
-                                      MaterialPageRoute(
-                                    builder: (context) {
-                                    return Homepage(
-                                        title: 'all', date: currentdate);
-                                    },
-                                  ), (route) => false);
-                                }
-                              } on UserNotFoundAuthException {
-                                // ignore: use_build_context_synchronously
-                                await showErrorDialog(
-                                    context, 'User Not Found');
-                              } on WrongPasswordAuthException {
-                                // ignore: use_build_context_synchronously
-                                await showErrorDialog(
-                                    context, 'Wrong Password');
-                              } on GenericAuthException {
-                                // ignore: use_build_context_synchronously
-                                await showErrorDialog(
-                                    context, 'Authentication Error');
-                              }
+                              // ignore: use_build_context_synchronously
+                              context.read<AuthBloc>().add(
+                                    AuthEventLogin(email, password),
+                                  );
                             },
                             style: ButtonStyle(
                                 backgroundColor:
@@ -196,13 +186,15 @@ class _LoginPageState extends State<LoginPage> {
                             const Text("Don't have an Account ?"),
                             TextButton(
                                 onPressed: () {
-                                  Navigator.of(context).pushNamedAndRemoveUntil(
-                                      "SignupRoutes", (route) => false);
+                                  context
+                                      .read<AuthBloc>()
+                                      .add(const AuthEventShouldRegister());
                                 },
                                 child: const Text("Register"))
                           ],
                         )
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

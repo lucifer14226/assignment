@@ -1,8 +1,11 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:newsapp/dialog/errordialog.dart';
 import 'package:newsapp/services/auth/auth_exception.dart';
+import 'package:newsapp/services/auth/bloc/auth_bloc.dart';
+import 'package:newsapp/services/auth/bloc/auth_event.dart';
+import 'package:newsapp/services/auth/bloc/auth_state.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -26,7 +29,22 @@ class _SignupPageState extends State<SignupPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) async {
+        // TODO: implement listener
+        if (state is AuthStateRegistering) {
+          if (state.exception is WeakPasswordAuthException) {
+            await showErrorDialog(context, 'Weak Password');
+          } else if (state.exception is InvalidEmailAuthException) {
+            await showErrorDialog(context, 'Invalid Email');
+          } else if (state.exception is EmailAlreadyInAuthUseException) {
+            await showErrorDialog(context, 'Email Already in use');
+          } else if (state.exception is GenericAuthException) {
+            showErrorDialog(context, 'Authentication Error');
+          }
+        }
+      },
+      child: Scaffold(
           resizeToAvoidBottomInset: false,
           body: Center(
             child: Container(
@@ -131,7 +149,7 @@ class _SignupPageState extends State<SignupPage> {
                                   hidepassword
                                       ? Icons.visibility
                                       : Icons.visibility_off,
-                                color: Colors.black,
+                                  color: Colors.black,
                                 ),
                               ),
                             ),
@@ -140,39 +158,11 @@ class _SignupPageState extends State<SignupPage> {
                             padding: const EdgeInsets.all(8.0),
                             child: ElevatedButton(
                               onPressed: () async {
-                                
                                 final email = _emailcontroller.text;
                                 final password = _passwordcontroler.text;
-                                try {
-                                  await FirebaseAuth.instance
-                                      .createUserWithEmailAndPassword(
-                                    email: email,
-                                    password: password,
-                                  );
-                                  await FirebaseAuth.instance.currentUser!
-                                      .sendEmailVerification();
-                                  // ignore: use_build_context_synchronously
-                                  Navigator.of(context).pushNamedAndRemoveUntil(
-                                      'VerifyEmailRoutes', (route) => false);
-                                } on WeakPasswordAuthException {
-                                  // ignore: use_build_context_synchronously
-                                  await showErrorDialog(
-                                      context, 'Weak Password');
-                                } on EmailAlreadyInAuthUseException {
-                                  // ignore: use_build_context_synchronously
-                                  await showErrorDialog(
-                                      context, 'Email Already in use');
-                                } on InvalidEmailAuthException {
-                                  // ignore: use_build_context_synchronously
-                                  await showErrorDialog(
-                                    context,
-                                    'Invalid Email',
-                                  );
-                                } on GenericAuthException {
-                                  // ignore: use_build_context_synchronously
-                                  await showErrorDialog(
-                                      context, 'Authentication Error');
-                                }
+                                context.read<AuthBloc>().add(
+                                      AuthEventRegister(email, password),
+                                    );
                               },
                               style: ButtonStyle(
                                   backgroundColor: MaterialStatePropertyAll(
@@ -189,9 +179,9 @@ class _SignupPageState extends State<SignupPage> {
                               const Text("Have an Account?"),
                               TextButton(
                                   onPressed: () {
-                                    Navigator.of(context)
-                                        .pushNamedAndRemoveUntil(
-                                            "LoginRoutes", (route) => false);
+                                    context
+                                        .read<AuthBloc>()
+                                        .add(const AuthEventLogOut());
                                   },
                                   child: const Text("Login "))
                             ],
@@ -203,7 +193,7 @@ class _SignupPageState extends State<SignupPage> {
                 ),
               ),
             ),
-        )
+          )),
     );
   }
 }
